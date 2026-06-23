@@ -1,0 +1,35 @@
+name: Test custom action input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install test-kitchen stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/bash
+          echo "kitchen called with args: $@"
+          echo "KITCHEN_ARGS=$@" >> "$GITHUB_ENV"
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          action: converge
+          os: centos
+          suite: myapp
+
+      - name: Assert kitchen was called with correct args
+        run: |
+          echo "KITCHEN_ARGS: $KITCHEN_ARGS"
+          if [ "$KITCHEN_ARGS" != "converge myapp-centos" ]; then
+            echo "FAIL: expected kitchen to be called with 'converge myapp-centos', got '$KITCHEN_ARGS'"
+            exit 1
+          fi
+          echo "PASS"
