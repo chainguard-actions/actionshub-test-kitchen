@@ -1,0 +1,37 @@
+name: Test default action (kitchen test)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install kitchen stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/bash
+          echo "kitchen called with: $@"
+          echo "$@" > /tmp/kitchen-args.txt
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - id: action
+        uses: .
+        # No inputs — uses default action: 'test', no suite, no os
+      - name: Assert kitchen was called with 'test'
+        run: |
+          if [ ! -f /tmp/kitchen-args.txt ]; then
+            echo "FAIL: kitchen was not called"
+            exit 1
+          fi
+          ARGS=$(cat /tmp/kitchen-args.txt)
+          echo "kitchen args: '$ARGS'"
+          # When suite and os are empty, suiteName='', exec runs 'kitchen test '
+          # @actions/exec filters empty args, so kitchen receives just 'test'
+          if [ "$ARGS" != "test" ]; then
+            echo "FAIL: expected 'test' but got '$ARGS'"
+            exit 1
+          fi
+          echo "PASS"

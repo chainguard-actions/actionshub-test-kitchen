@@ -1,0 +1,39 @@
+name: Test custom action with suite only (no os)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Install kitchen stub
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/bash
+          echo "kitchen called with: $@"
+          echo "$@" > /tmp/kitchen-args.txt
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - id: action
+        uses: .
+        with:
+          action: verify
+          suite: myapp
+          # os is not provided
+      - name: Assert kitchen was called with verify and suite only
+        run: |
+          if [ ! -f /tmp/kitchen-args.txt ]; then
+            echo "FAIL: kitchen was not called"
+            exit 1
+          fi
+          ARGS=$(cat /tmp/kitchen-args.txt)
+          echo "kitchen args: '$ARGS'"
+          # Expected: "verify myapp" (no os suffix)
+          if [ "$ARGS" != "verify myapp" ]; then
+            echo "FAIL: expected 'verify myapp' but got '$ARGS'"
+            exit 1
+          fi
+          echo "PASS"
