@@ -1,0 +1,37 @@
+name: Test destroy action input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install test-kitchen stub
+        run: |
+          # Create a stub 'kitchen' command that records its arguments
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/bash
+          echo "kitchen called with: $@"
+          echo "KITCHEN_ARGS=$@" >> "$GITHUB_ENV"
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          action: destroy
+          os: windows
+          suite: integration
+
+      - name: Assert kitchen was called with destroy action and correct suite name
+        run: |
+          echo "KITCHEN_ARGS: $KITCHEN_ARGS"
+          if [ "$KITCHEN_ARGS" != "destroy integration-windows" ]; then
+            echo "FAIL: expected 'destroy integration-windows', got '$KITCHEN_ARGS'"
+            exit 1
+          fi
+          echo "PASS"
