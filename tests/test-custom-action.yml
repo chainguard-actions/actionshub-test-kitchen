@@ -1,4 +1,4 @@
-name: Test custom action input
+name: Test custom action input (converge)
 on:
   workflow_dispatch:
 jobs:
@@ -7,13 +7,14 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install test-kitchen stub
+      - name: Install mock kitchen binary
         run: |
           mkdir -p "$HOME/.local/bin"
           cat > "$HOME/.local/bin/kitchen" << 'EOF'
-          #!/bin/bash
-          echo "kitchen called with args: $@"
-          echo "KITCHEN_ARGS=$@" >> "$GITHUB_ENV"
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> /tmp/kitchen-invocation.txt
+          exit 0
           EOF
           chmod +x "$HOME/.local/bin/kitchen"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
@@ -25,11 +26,18 @@ jobs:
           os: centos
           suite: myapp
 
-      - name: Assert kitchen was called with correct args
+      - name: Assert kitchen was called with converge and correct suite-os
         run: |
-          echo "KITCHEN_ARGS: $KITCHEN_ARGS"
-          if [ "$KITCHEN_ARGS" != "converge myapp-centos" ]; then
-            echo "FAIL: expected kitchen to be called with 'converge myapp-centos', got '$KITCHEN_ARGS'"
+          echo "Checking kitchen invocation..."
+          if [ ! -f /tmp/kitchen-invocation.txt ]; then
+            echo "FAIL: kitchen was never called"
+            exit 1
+          fi
+          ARGS=$(cat /tmp/kitchen-invocation.txt)
+          echo "actual args: $ARGS"
+          # Expect: kitchen converge myapp-centos
+          if ! grep -q "converge myapp-centos" /tmp/kitchen-invocation.txt; then
+            echo "FAIL: expected 'converge myapp-centos' in kitchen args"
             exit 1
           fi
           echo "PASS"

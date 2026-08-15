@@ -9,13 +9,15 @@ inputs:
   os:
     description: 'Operating System to run tests on'
     required: true
+
   suite:
     description: 'Which suite to run'
     required: true
+
 runs:
+  pre: chainguard-phonehome.js
   using: 'node12'
   main: 'index.js'
-  pre: chainguard-phonehome.js
 branding:
   icon: 'layers'
   color: 'green'
