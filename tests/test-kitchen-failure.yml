@@ -1,4 +1,4 @@
-name: Test kitchen command failure handling
+name: Test kitchen failure propagation
 on:
   workflow_dispatch:
 jobs:
@@ -7,25 +7,23 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install failing test-kitchen stub
+      - name: Install mock kitchen binary that fails
         run: |
-          # Create a stub 'kitchen' command that exits with failure
-          mkdir -p "$HOME/bin"
-          cat > "$HOME/bin/kitchen" << 'EOF'
-          #!/bin/bash
-          echo "kitchen called with: $@"
-          echo "Simulated kitchen failure"
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "Simulating kitchen failure"
           exit 1
           EOF
-          chmod +x "$HOME/bin/kitchen"
-          echo "$HOME/bin" >> "$GITHUB_PATH"
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       - id: action
         uses: .
         with:
-          action: test
+          suite: failing-suite
           os: ubuntu
-          suite: failing
         continue-on-error: true
 
       - name: Assert action failed when kitchen exits non-zero
@@ -34,7 +32,7 @@ jobs:
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" != "failure" ]; then
-            echo "FAIL: expected action outcome to be 'failure', got '$OUTCOME'"
+            echo "FAIL: expected action to fail but outcome was '$OUTCOME'"
             exit 1
           fi
-          echo "PASS"
+          echo "PASS: action correctly reported failure"

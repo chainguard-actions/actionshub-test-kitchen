@@ -1,0 +1,36 @@
+name: Test kitchen converge action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock kitchen binary
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> "$GITHUB_ENV"
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          action: converge
+          suite: webserver
+          os: debian
+
+      - name: Assert kitchen was called with converge action and correct suite
+        run: |
+          echo "KITCHEN_ARGS: $KITCHEN_ARGS"
+          if [ "$KITCHEN_ARGS" != "converge webserver-debian" ]; then
+            echo "FAIL: expected 'converge webserver-debian' but got '$KITCHEN_ARGS'"
+            exit 1
+          fi
+          echo "PASS"
