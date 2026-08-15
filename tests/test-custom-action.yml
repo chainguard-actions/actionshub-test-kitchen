@@ -7,14 +7,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install test-kitchen stub
+      - name: Install mock kitchen binary
         run: |
-          # Create a stub 'kitchen' command that records its arguments
           mkdir -p "$HOME/.local/bin"
           cat > "$HOME/.local/bin/kitchen" << 'EOF'
-          #!/bin/bash
-          echo "kitchen called with: $@"
-          echo "KITCHEN_ARGS=$@" >> "$GITHUB_ENV"
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> "$GITHUB_ENV"
           exit 0
           EOF
           chmod +x "$HOME/.local/bin/kitchen"
@@ -24,14 +23,14 @@ jobs:
         uses: .
         with:
           action: verify
-          os: centos
           suite: myapp
+          os: centos-7
 
-      - name: Assert kitchen was called with verify action and correct suite name
+      - name: Assert kitchen was called with verify action
         run: |
           echo "KITCHEN_ARGS: $KITCHEN_ARGS"
-          if [ "$KITCHEN_ARGS" != "verify myapp-centos" ]; then
-            echo "FAIL: expected 'verify myapp-centos', got '$KITCHEN_ARGS'"
+          if [ "$KITCHEN_ARGS" != "verify myapp-centos-7" ]; then
+            echo "FAIL: expected 'verify myapp-centos-7' but got '$KITCHEN_ARGS'"
             exit 1
           fi
           echo "PASS"

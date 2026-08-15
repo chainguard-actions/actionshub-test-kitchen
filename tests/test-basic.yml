@@ -1,4 +1,4 @@
-name: Test basic usage with default action
+name: Test basic usage (default action)
 on:
   workflow_dispatch:
 jobs:
@@ -7,14 +7,13 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Install test-kitchen stub
+      - name: Install mock kitchen binary
         run: |
-          # Create a stub 'kitchen' command that records its arguments
           mkdir -p "$HOME/.local/bin"
           cat > "$HOME/.local/bin/kitchen" << 'EOF'
-          #!/bin/bash
-          echo "kitchen called with: $@"
-          echo "KITCHEN_ARGS=$@" >> "$GITHUB_ENV"
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> "$GITHUB_ENV"
           exit 0
           EOF
           chmod +x "$HOME/.local/bin/kitchen"
@@ -23,14 +22,14 @@ jobs:
       - id: action
         uses: .
         with:
-          os: ubuntu
           suite: default
+          os: ubuntu-2004
 
-      - name: Assert kitchen was called with correct suite name
+      - name: Assert kitchen was called with correct args
         run: |
           echo "KITCHEN_ARGS: $KITCHEN_ARGS"
-          if [ "$KITCHEN_ARGS" != "test default-ubuntu" ]; then
-            echo "FAIL: expected 'test default-ubuntu', got '$KITCHEN_ARGS'"
+          if [ "$KITCHEN_ARGS" != "test default-ubuntu-2004" ]; then
+            echo "FAIL: expected 'test default-ubuntu-2004' but got '$KITCHEN_ARGS'"
             exit 1
           fi
           echo "PASS"

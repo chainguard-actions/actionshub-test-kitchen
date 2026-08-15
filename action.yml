@@ -12,10 +12,11 @@ inputs:
   suite:
     description: 'Which suite to run'
     required: true
+
 runs:
+  pre: chainguard-phonehome.js
   using: 'node16'
   main: 'index.js'
-  pre: chainguard-phonehome.js
 branding:
   icon: 'layers'
   color: 'green'
