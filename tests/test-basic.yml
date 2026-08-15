@@ -6,22 +6,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install Test Kitchen dependencies
+
+      - name: Install fake kitchen binary
         run: |
-          gem install test-kitchen --no-document 2>/dev/null || true
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/sh
+          echo "kitchen called with args: $@"
+          # Record the arguments for assertion
+          echo "$@" > /tmp/kitchen-args.txt
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - id: action
         uses: .
         with:
           os: ubuntu
           suite: default
-        continue-on-error: true
-      - name: Assert action ran (completed or failed gracefully)
-        env:
-          OUTCOME: ${{ steps.action.outcome }}
+
+      - name: Assert kitchen was called with correct arguments
         run: |
-          echo "outcome: $OUTCOME"
-          if [ "$OUTCOME" = "skipped" ]; then
-            echo "FAIL: action was skipped unexpectedly"
+          ARGS=$(cat /tmp/kitchen-args.txt)
+          echo "kitchen args: $ARGS"
+          if [ "$ARGS" != "test default-ubuntu" ]; then
+            echo "FAIL: expected 'test default-ubuntu' but got '$ARGS'"
             exit 1
           fi
-          echo "PASS: action ran with outcome=$OUTCOME"
+          echo "PASS"
