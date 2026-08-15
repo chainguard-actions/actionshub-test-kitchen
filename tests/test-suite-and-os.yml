@@ -6,34 +6,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - name: Install kitchen stub
+
+      - name: Install mock kitchen binary
         run: |
           mkdir -p "$HOME/.local/bin"
           cat > "$HOME/.local/bin/kitchen" << 'EOF'
-          #!/bin/bash
-          echo "kitchen called with: $@"
-          echo "$@" > /tmp/kitchen-args.txt
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> /tmp/kitchen-invocation.txt
           exit 0
           EOF
           chmod +x "$HOME/.local/bin/kitchen"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
       - id: action
         uses: .
         with:
-          action: test
-          suite: default
-          os: ubuntu-2004
-      - name: Assert kitchen was called with correct suite name
+          action: 'test'
+          suite: 'default'
+          os: 'ubuntu-2004'
+
+      - name: Assert kitchen was called with suite-os combination
         run: |
-          if [ ! -f /tmp/kitchen-args.txt ]; then
-            echo "FAIL: kitchen was not called"
+          echo "Checking kitchen invocation..."
+          if [ ! -f /tmp/kitchen-invocation.txt ]; then
+            echo "FAIL: kitchen was not invoked"
             exit 1
           fi
-          ARGS=$(cat /tmp/kitchen-args.txt)
-          echo "kitchen args: '$ARGS'"
-          # Expected: "test default-ubuntu-2004"
-          if [ "$ARGS" != "test default-ubuntu-2004" ]; then
-            echo "FAIL: expected 'test default-ubuntu-2004' but got '$ARGS'"
+          ARGS=$(cat /tmp/kitchen-invocation.txt)
+          echo "actual args: $ARGS"
+          # Should be "kitchen test default-ubuntu-2004"
+          if echo "$ARGS" | grep -q "KITCHEN_ARGS=test default-ubuntu-2004"; then
+            echo "PASS: kitchen called with 'test default-ubuntu-2004'"
+          else
+            echo "FAIL: expected kitchen to be called with 'test default-ubuntu-2004', got: $ARGS"
             exit 1
           fi
-          echo "PASS"

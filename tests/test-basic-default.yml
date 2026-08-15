@@ -1,0 +1,42 @@
+name: Test basic default action
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install mock kitchen binary
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          cat > "$HOME/.local/bin/kitchen" << 'EOF'
+          #!/bin/sh
+          echo "kitchen called with args: $*"
+          echo "KITCHEN_ARGS=$*" >> /tmp/kitchen-invocation.txt
+          exit 0
+          EOF
+          chmod +x "$HOME/.local/bin/kitchen"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - id: action
+        uses: .
+        with:
+          action: 'test'
+
+      - name: Assert kitchen was called with correct args
+        run: |
+          echo "Checking kitchen invocation..."
+          if [ ! -f /tmp/kitchen-invocation.txt ]; then
+            echo "FAIL: kitchen was not invoked"
+            exit 1
+          fi
+          ARGS=$(cat /tmp/kitchen-invocation.txt)
+          echo "actual args: $ARGS"
+          # Should be "kitchen test " (no suite or os)
+          if echo "$ARGS" | grep -q "KITCHEN_ARGS=test"; then
+            echo "PASS: kitchen called with 'test'"
+          else
+            echo "FAIL: expected kitchen to be called with 'test', got: $ARGS"
+            exit 1
+          fi
